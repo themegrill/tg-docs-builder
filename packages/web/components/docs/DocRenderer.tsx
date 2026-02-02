@@ -17,6 +17,7 @@ import {
   Link as LinkIcon,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
+import DeleteDocumentButton from "@/components/docs/DeleteDocumentButton";
 
 //@ts-expect-error Ignore missing types
 import "@blocknote/core/fonts/inter.css";
@@ -292,23 +293,33 @@ export default function DocRenderer({ doc, slug, projectSlug }: Props) {
         </div>
 
         {isAuthenticated && !editorState.isEditing && (
-          <Button
-            onClick={() =>
-              setEditorState((prev) => ({
-                ...prev,
-                isEditing: true,
-                ...(isSectionOverview && {
-                  isEditingSectionTitle: true,
-                  sectionTitle: editorState.title,
-                }),
-              }))
-            }
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <Pencil size={16} />
-            Edit
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() =>
+                setEditorState((prev) => ({
+                  ...prev,
+                  isEditing: true,
+                  ...(isSectionOverview && {
+                    isEditingSectionTitle: true,
+                    sectionTitle: editorState.title,
+                  }),
+                }))
+              }
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Pencil size={16} />
+              Edit
+            </Button>
+            {projectSlug && (
+              <DeleteDocumentButton
+                projectSlug={projectSlug}
+                documentSlug={slug}
+                documentTitle={editorState.title}
+                isSectionOverview={isSectionOverview}
+              />
+            )}
+          </div>
         )}
       </div>
 

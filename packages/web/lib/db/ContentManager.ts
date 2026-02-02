@@ -136,6 +136,72 @@ export class ContentManager {
     }
   }
 
+  async deleteDoc(projectId: string, slug: string): Promise<boolean> {
+    try {
+      // Get current user from NextAuth
+      const session = await auth();
+
+      if (!session?.user?.id) {
+        console.error("User not authenticated");
+        return false;
+      }
+
+      // Delete the document from database
+      await this.sql`
+        DELETE FROM documents
+        WHERE project_id = ${projectId} AND slug = ${slug}
+      `;
+
+      // Remove from navigation
+      const [nav] = await this.sql`
+        SELECT id, structure FROM navigation
+        WHERE project_id = ${projectId}
+        ORDER BY updated_at DESC
+        LIMIT 1
+      `;
+
+      if (nav && nav.structure) {
+        const structure = nav.structure as Navigation;
+        const docPath = `/docs/${slug}`;
+
+        // Ensure routes array exists
+        if (!structure.routes) {
+          structure.routes = [];
+        }
+
+        // Remove document from navigation structure
+        const updatedRoutes = structure.routes.map((route) => {
+          if (route.children) {
+            return {
+              ...route,
+              children: route.children.filter((child) => child.path !== docPath)
+            };
+          }
+          return route;
+        });
+
+        const updatedStructure = {
+          ...structure,
+          routes: updatedRoutes
+        };
+
+        // Update navigation using sql.json() for proper JSONB handling
+        await this.sql`
+          UPDATE navigation
+          SET
+            structure = ${this.sql.json(updatedStructure as any)},
+            updated_by = ${session.user.id}
+          WHERE id = ${nav.id}
+        `;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error deleting document:", error);
+      return false;
+    }
+  }
+
   async listDocs(projectId: string): Promise<DocMeta[]> {
     try {
       const docs = await this.sql`
@@ -178,7 +244,21 @@ export class ContentManager {
         };
       }
 
-      return nav.structure as Navigation;
+      let structure = nav.structure;
+
+      // Handle double-encoded JSON (stored as string)
+      if (typeof structure === "string") {
+        structure = JSON.parse(structure);
+      }
+
+      const navigation = structure as Navigation;
+
+      // Ensure routes array exists
+      if (!navigation.routes) {
+        navigation.routes = [];
+      }
+
+      return navigation;
     } catch (error) {
       console.error("Error fetching navigation:", error);
       return {

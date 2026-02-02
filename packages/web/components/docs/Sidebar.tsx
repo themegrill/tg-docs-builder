@@ -35,7 +35,7 @@ export default function Sidebar({ navigation, isAuthenticated, projectSlug }: Si
         </div>
 
       <nav className="space-y-1 flex-1">
-        {navigation.routes.map((route) => (
+        {navigation?.routes?.map((route) => (
           <NavItem
             key={route.path}
             route={route}
@@ -43,7 +43,7 @@ export default function Sidebar({ navigation, isAuthenticated, projectSlug }: Si
             isAuthenticated={isAuthenticated}
             projectSlug={projectSlug}
           />
-        ))}
+        )) || null}
 
         {/* Add Section button - below all navigation items */}
         {isAuthenticated && projectSlug && (

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pencil, Save, Eye, Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
+import DeleteSectionButton from "@/components/docs/DeleteSectionButton";
 
 interface SectionPageProps {
   projectSlug: string;
@@ -97,14 +98,21 @@ export default function SectionPage({
         </div>
 
         {isAuthenticated && !isEditing && (
-          <Button
-            onClick={() => setIsEditing(true)}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <Pencil size={16} />
-            Edit
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setIsEditing(true)}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Pencil size={16} />
+              Edit
+            </Button>
+            <DeleteSectionButton
+              projectSlug={projectSlug}
+              sectionSlug={sectionSlug}
+              sectionTitle={sectionTitle}
+            />
+          </div>
         )}
       </div>
 

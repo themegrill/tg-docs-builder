@@ -113,3 +113,46 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string[] }> },
+) {
+  const resolvedParams = await params;
+  const slug = resolvedParams.slug.join("/");
+
+  try {
+    // Check authentication
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
+    // Find which project this document belongs to
+    const sql = getDb();
+    const [doc] = await sql`
+      SELECT project_id FROM documents WHERE slug = ${slug} LIMIT 1
+    `;
+
+    if (!doc) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    // Delete the document
+    const cm = ContentManager.create();
+    await cm.deleteDoc(doc.project_id, slug);
+
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("[DELETE /api/docs] Error:", err.message);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
+}
