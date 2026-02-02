@@ -4,9 +4,10 @@ import { Navigation } from "@/lib/db/ContentManager";
 import Sidebar from "@/components/docs/Sidebar";
 import UserMenu from "@/components/auth/UserMenu";
 import TableOfContents from "@/components/docs/TableOfContents";
+import SearchDialog from "@/components/docs/SearchDialog";
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 
@@ -24,8 +25,11 @@ export default function DocsLayoutClient({
   const pathname = usePathname();
 
   // Extract project slug from pathname if in project context
-  const projectMatch = pathname.match(/^\/projects\/([^\/]+)/);
-  const projectSlug = projectMatch ? projectMatch[1] : null;
+  // Memoized to avoid regex computation on every render
+  const projectSlug = useMemo(() => {
+    const match = pathname.match(/^\/projects\/([^\/]+)/);
+    return match ? match[1] : null;
+  }, [pathname]);
 
   // Close sidebar when screen gets larger
   useEffect(() => {
@@ -42,28 +46,42 @@ export default function DocsLayoutClient({
   return (
     <div className="flex flex-col h-screen">
       {/* Top bar - Full width */}
-      <div className="border-b bg-white px-4 md:px-8 py-3 flex justify-between items-center flex-shrink-0">
-        <div className="flex items-center gap-4">
-          {/* Hamburger Menu - Mobile/Tablet */}
-          <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="lg:hidden p-2 hover:bg-gray-100 rounded-md transition-colors"
-            aria-label="Toggle menu"
-          >
-            <Menu size={20} />
-          </button>
+      <div className="border-b bg-white px-4 md:px-8 py-3 flex-shrink-0">
+        <div className="grid grid-cols-3 items-center gap-4">
+          {/* Left: Logo and Version */}
+          <div className="flex items-center gap-4">
+            {/* Hamburger Menu - Mobile/Tablet */}
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="lg:hidden p-2 hover:bg-gray-100 rounded-md transition-colors"
+              aria-label="Toggle menu"
+            >
+              <Menu size={20} />
+            </button>
 
-          <Image
-            src="https://themegrill.com/wp-content/uploads/2021/08/tg-logo-black.png"
-            alt="Logo"
-            width={150}
-            height={20}
-          />
-          <span className="text-xs text-gray-500 hidden sm:inline">
-            Version {navigation.version}
-          </span>
+            <Image
+              src="https://themegrill.com/wp-content/uploads/2021/08/tg-logo-black.png"
+              alt="Logo"
+              width={150}
+              height={20}
+            />
+            <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              v{navigation.version}
+            </span>
+          </div>
+
+          {/* Center: Search */}
+          <div className="flex justify-center">
+            <div className="w-full max-w-md">
+              <SearchDialog projectSlug={projectSlug} />
+            </div>
+          </div>
+
+          {/* Right: User Menu */}
+          <div className="flex justify-end">
+            <UserMenu />
+          </div>
         </div>
-        <UserMenu />
       </div>
 
       {/* Content area with sidebars */}

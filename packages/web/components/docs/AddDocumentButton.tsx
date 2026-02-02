@@ -20,15 +20,25 @@ interface AddDocumentButtonProps {
   projectSlug: string;
   sectionSlug: string;
   sectionTitle: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }
 
 export default function AddDocumentButton({
   projectSlug,
   sectionSlug,
   sectionTitle,
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange,
+  hideTrigger = false,
 }: AddDocumentButtonProps) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  // Use external control if provided, otherwise use internal state
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = externalOnOpenChange || setInternalOpen;
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
@@ -88,12 +98,14 @@ export default function AddDocumentButton({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <button className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors">
-          <Plus className="h-3 w-3" />
-          <span>Add Document</span>
-        </button>
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <button className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors">
+            <Plus className="h-3 w-3" />
+            <span>Add Document</span>
+          </button>
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add New Document</DialogTitle>

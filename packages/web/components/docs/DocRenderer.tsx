@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { BlockNoteView } from "@blocknote/mantine";
 import { useCreateBlockNote } from "@blocknote/react";
 import { DocContent } from "@/lib/db/ContentManager";
@@ -25,12 +26,15 @@ import "@blocknote/mantine/style.css";
 interface Props {
   doc: DocContent;
   slug: string;
+  projectSlug?: string;
 }
 
 interface EditorState {
   isEditing: boolean;
   title: string;
   description: string;
+  sectionTitle?: string;
+  isEditingSectionTitle?: boolean;
 }
 
 interface SaveState {
@@ -39,12 +43,16 @@ interface SaveState {
   error: string;
 }
 
-export default function DocRenderer({ doc, slug }: Props) {
+export default function DocRenderer({ doc, slug, projectSlug }: Props) {
+  const router = useRouter();
   const [editorState, setEditorState] = useState<EditorState>({
     isEditing: false,
     title: doc.title,
     description: doc.description || "",
   });
+
+  // Check if this is a section overview (slug has no "/" - it's a top-level section)
+  const isSectionOverview = !!projectSlug && !slug.includes("/");
 
   const [saveState, setSaveState] = useState<SaveState>({
     isSaving: false,
@@ -58,12 +66,16 @@ export default function DocRenderer({ doc, slug }: Props) {
 
   // Add anchor links to headings
   useEffect(() => {
+    // Only add anchors in view mode
     if (editorState.isEditing) return;
 
     const addHeadingAnchors = () => {
       const headings = document.querySelectorAll(
         ".bn-editor h1, .bn-editor h2, .bn-editor h3, .bn-editor h4, .bn-editor h5, .bn-editor h6",
       );
+
+      // Early return if no headings found
+      if (headings.length === 0) return;
 
       headings.forEach((heading) => {
         // Skip if already has anchor
@@ -98,7 +110,8 @@ export default function DocRenderer({ doc, slug }: Props) {
     };
 
     // Run after a short delay to ensure BlockNote has rendered
-    const timer = setTimeout(addHeadingAnchors, 100);
+    // Using a single timeout is fine - no need for polling here
+    const timer = setTimeout(addHeadingAnchors, 150);
 
     return () => clearTimeout(timer);
   }, [editorState.isEditing, doc.blocks]);
@@ -136,14 +149,34 @@ export default function DocRenderer({ doc, slug }: Props) {
   const handleSave = async () => {
     setSaveState({ isSaving: true, success: false, error: "" });
 
-    console.log("[DocRenderer] Saving document:", {
-      slug,
-      title: editorState.title,
-      description: editorState.description,
-      blocksCount: editor.document.length,
-    });
-
     try {
+      // Save section title if editing a section overview
+      if (editorState.isEditingSectionTitle && isSectionOverview && projectSlug) {
+        if (!editorState.sectionTitle?.trim()) {
+          setSaveState({
+            isSaving: false,
+            success: false,
+            error: "Section title is required",
+          });
+          return;
+        }
+
+        const sectionResponse = await fetch(
+          `/api/projects/${projectSlug}/sections/${slug}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: editorState.sectionTitle }),
+          }
+        );
+
+        if (!sectionResponse.ok) {
+          const data = await sectionResponse.json();
+          throw new Error(data.error || "Failed to update section title");
+        }
+      }
+
+      // Save document content
       const updatedDoc = {
         slug: doc.slug,
         title: editorState.title,
@@ -157,21 +190,30 @@ export default function DocRenderer({ doc, slug }: Props) {
         body: JSON.stringify(updatedDoc),
       });
 
+      const responseData = await response.json();
+
       if (response.ok) {
-        console.log("[DocRenderer] Document saved successfully");
-        setEditorState((prev) => ({ ...prev, isEditing: false }));
+        setEditorState((prev) => ({
+          ...prev,
+          isEditing: false,
+          isEditingSectionTitle: false,
+          sectionTitle: undefined,
+        }));
         setSaveState({ isSaving: false, success: true, error: "" });
+
+        // Refresh the page to show updated content
+        router.refresh();
+
         setTimeout(
           () => setSaveState((prev) => ({ ...prev, success: false })),
           3000,
         );
       } else {
-        const data = await response.json();
-        console.error("[DocRenderer] Save failed:", data.error);
+        console.error("[DocRenderer] Save failed:", responseData);
         setSaveState({
           isSaving: false,
           success: false,
-          error: data.error || "Save failed",
+          error: responseData.error || `Save failed (${response.status})`,
         });
       }
     } catch (error) {
@@ -179,7 +221,7 @@ export default function DocRenderer({ doc, slug }: Props) {
       setSaveState({
         isSaving: false,
         success: false,
-        error: "Save failed. Please try again.",
+        error: error instanceof Error ? error.message : "Save failed. Please try again.",
       });
     }
   };
@@ -197,7 +239,22 @@ export default function DocRenderer({ doc, slug }: Props) {
       {/* Header */}
       <div className="flex justify-between items-start mb-6 pb-4 border-b">
         <div className="flex-1 mr-4">
-          {editorState.isEditing ? (
+          {editorState.isEditing && editorState.isEditingSectionTitle ? (
+            <div className="space-y-3">
+              <Input
+                type="text"
+                value={editorState.sectionTitle || ""}
+                onChange={(e) =>
+                  setEditorState((prev) => ({
+                    ...prev,
+                    sectionTitle: e.target.value,
+                  }))
+                }
+                className="text-3xl font-bold border-2 border-blue-200 focus:border-blue-400"
+                placeholder="Section title"
+              />
+            </div>
+          ) : editorState.isEditing ? (
             <div className="space-y-3">
               <Input
                 type="text"
@@ -237,7 +294,14 @@ export default function DocRenderer({ doc, slug }: Props) {
         {isAuthenticated && !editorState.isEditing && (
           <Button
             onClick={() =>
-              setEditorState((prev) => ({ ...prev, isEditing: true }))
+              setEditorState((prev) => ({
+                ...prev,
+                isEditing: true,
+                ...(isSectionOverview && {
+                  isEditingSectionTitle: true,
+                  sectionTitle: editorState.title,
+                }),
+              }))
             }
             variant="outline"
             className="flex items-center gap-2"
@@ -271,6 +335,8 @@ export default function DocRenderer({ doc, slug }: Props) {
                 isEditing: false,
                 title: doc.title,
                 description: doc.description || "",
+                isEditingSectionTitle: false,
+                sectionTitle: undefined,
               });
             }}
             variant="outline"
@@ -311,12 +377,11 @@ export default function DocRenderer({ doc, slug }: Props) {
           .bn-editor h5,
           .bn-editor h6 {
             position: relative;
-            padding-left: 1.5rem;
             scroll-margin-top: 2rem;
           }
           .heading-anchor {
             position: absolute;
-            left: 0;
+            left: -1.5rem;
             top: 0.25rem;
             opacity: 0;
             transition: opacity 0.2s;

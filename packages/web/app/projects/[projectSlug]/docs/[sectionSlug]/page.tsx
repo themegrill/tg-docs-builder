@@ -13,6 +13,7 @@ import { FileText } from "lucide-react";
 import DocRendererClient from "@/components/docs/DocRendererClient";
 import AddSectionOverviewButton from "@/components/docs/AddSectionOverviewButton";
 import RemoveSectionOverviewButton from "@/components/docs/RemoveSectionOverviewButton";
+import SectionHeader from "@/components/docs/SectionPage";
 
 export default async function SectionPage({
   params,
@@ -63,7 +64,7 @@ export default async function SectionPage({
       {/* Section content/description (if exists) */}
       {sectionDoc ? (
         <div className="mb-12">
-          <DocRendererClient doc={sectionDoc} slug={sectionSlug} />
+          <DocRendererClient doc={sectionDoc} slug={sectionSlug} projectSlug={projectSlug} />
 
           {/* Remove Overview Button for authenticated users */}
           {isAuthenticated && (
@@ -76,13 +77,11 @@ export default async function SectionPage({
         </div>
       ) : (
         <>
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">{section.title}</h1>
-            <p className="text-gray-600">
-              {documents.length}{" "}
-              {documents.length === 1 ? "document" : "documents"}
-            </p>
-          </div>
+          <SectionHeader
+            projectSlug={projectSlug}
+            sectionSlug={sectionSlug}
+            sectionTitle={section.title}
+          />
 
           {/* Add Overview Button for authenticated users */}
           {isAuthenticated && (

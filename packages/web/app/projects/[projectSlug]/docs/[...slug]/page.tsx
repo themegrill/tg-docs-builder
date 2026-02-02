@@ -1,6 +1,7 @@
 import { ContentManager } from "@/lib/db/ContentManager";
 import { notFound } from "next/navigation";
 import DocRendererClient from "@/components/docs/DocRendererClient";
+import SectionPage from "@/components/docs/SectionPage";
 import { getDb } from "@/lib/db/postgres";
 
 export default async function ProjectDocPage({
@@ -29,12 +30,44 @@ export default async function ProjectDocPage({
   const cm = ContentManager.create();
   const doc = await cm.getDoc(project.id, slug);
 
+  // If no document found, check if it's a section without overview
   if (!doc) {
-    console.log("[ProjectDocPage] Document not found:", { projectSlug, slug });
+    // Check if this slug is a section (no "/" means top-level section)
+    if (!slug.includes("/")) {
+      // Get navigation to find section details
+      const [nav] = await sql`
+        SELECT structure FROM navigation WHERE project_id = ${project.id}
+      `;
+
+      if (nav?.structure?.routes) {
+        const sectionPath = `/docs/${slug}`;
+        const section = nav.structure.routes.find(
+          (route: any) => route.path === sectionPath
+        );
+
+        if (section) {
+          // Get child documents for this section
+          const childDocs = section.children?.map((child: any) => ({
+            title: child.title,
+            slug: child.path.replace(/^\/docs\//, ""),
+          })) || [];
+
+          return (
+            <SectionPage
+              projectSlug={projectSlug}
+              sectionSlug={slug}
+              sectionTitle={section.title}
+              childDocs={childDocs}
+            />
+          );
+        }
+      }
+    }
+
     notFound();
   }
 
-  return <DocRendererClient doc={doc} slug={slug} />;
+  return <DocRendererClient doc={doc} slug={slug} projectSlug={projectSlug} />;
 }
 
 export const dynamic = "force-dynamic";

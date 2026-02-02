@@ -1,21 +1,26 @@
-# Documentation Builder
+# TG Docs Builder
 
-AI-powered documentation builder with rich text editing capabilities.
+AI-powered documentation builder with rich text editing, authentication, and PostgreSQL database.
 
 ## Features
 
 - 📝 Rich text editing with BlockNote
-- 🗂️ JSON-based content storage
+- 🔐 Authentication with NextAuth 5.0
+- 🗄️ PostgreSQL database with JSONB storage
 - 🎨 Clean, Notion-like UI
 - 🔍 Easy navigation
+- 🐳 Docker-based development environment
 - 🤖 AI-powered assistance (coming soon)
 
 ## Tech Stack
 
-- **Framework:** Next.js 14 (App Router)
+- **Framework:** Next.js 16 (App Router)
 - **Editor:** BlockNote
+- **Authentication:** NextAuth 5.0
+- **Database:** PostgreSQL with postgres.js
 - **Styling:** Tailwind CSS + shadcn/ui
 - **Language:** TypeScript
+- **Infrastructure:** Docker Compose
 
 ## Getting Started
 
@@ -23,20 +28,26 @@ AI-powered documentation builder with rich text editing capabilities.
 
 - Node.js 18 or higher
 - pnpm package manager
+- Docker and Docker Compose
 - Git
 
 ### Installation
+
 ```bash
 # Clone the repository
 git clone https://github.com/themegrill/docs-builder.git
-cd docs-builder
-
-# Initialize submodule
-git submodule update --init --recursive
+cd tg-docs-builder
 
 # Install dependencies
 cd packages/web
 pnpm install
+
+# Set up environment variables
+cp .env.local.example .env.local
+# Edit .env.local with your configuration
+
+# Start PostgreSQL database
+pnpm db:start
 
 # Start development server
 pnpm dev
@@ -45,57 +56,115 @@ pnpm dev
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Project Structure
+
 ```
-docs-builder/
-├── content/              # Git submodule (documentation content)
-│   └── docs/
-│       ├── meta.json    # Navigation structure
-│       └── *.json       # Documentation pages
-└── packages/
-    └── web/             # Next.js application
-        ├── app/         # App router pages
-        ├── components/  # React components
-        └── lib/         # Utilities
+tg-docs-builder/
+├── docker-compose.yml       # PostgreSQL container setup
+├── packages/
+│   └── web/                 # Next.js application
+│       ├── app/             # App router pages & API routes
+│       ├── components/      # React components
+│       ├── lib/             # Utilities and helpers
+│       ├── db/              # Database schemas and migrations
+│       │   └── init.sql     # Initial database setup
+│       └── types/           # TypeScript type definitions
+└── pnpm-workspace.yaml
 ```
+
+## Database Management
+
+The project uses PostgreSQL with the following tables:
+
+- **users** - User accounts for authentication
+- **documents** - Documentation pages with BlockNote blocks (JSONB)
+- **navigation** - Navigation structure (JSONB)
+
+### Database Commands
+
+```bash
+# Start database
+pnpm db:start
+
+# Stop database
+pnpm db:stop
+
+# Reset database (warning: deletes all data)
+pnpm db:reset
+
+# View database logs
+pnpm db:logs
+```
+
+### Database Connection
+
+Default local development credentials:
+- **Host:** localhost
+- **Port:** 5432
+- **Database:** tg_docs_db
+- **User:** tg_docs_user
+- **Password:** tg_docs_password
 
 ## Content Management
 
-### Adding a New Page
+Documents are stored in the PostgreSQL database with the following structure:
 
-1. Create a new JSON file in `content/docs/your-section/`
-2. Update `content/docs/meta.json` to include the new page in navigation
-3. Commit changes to the content repository
+- **slug** - URL-friendly identifier
+- **title** - Document title
+- **description** - Optional description
+- **blocks** - BlockNote content (stored as JSONB)
+- **published** - Publication status
+- **order_index** - Display order
 
-### Page JSON Structure
-```json
-{
-  "meta": {
-    "title": "Page Title",
-    "description": "Page description",
-    "slug": "section/page-name",
-    "createdAt": "2024-01-29T00:00:00Z",
-    "updatedAt": "2024-01-29T00:00:00Z",
-    "order": 1
-  },
-  "blocks": [
-    // BlockNote block structure
-  ]
-}
-```
+Content is managed through the web interface with full CRUD operations.
 
 ## Development
 
 ### Running Locally
+
 ```bash
 cd packages/web
 pnpm dev
 ```
 
 ### Building for Production
+
 ```bash
 cd packages/web
 pnpm build
 pnpm start
+```
+
+### Available Scripts
+
+From `packages/web`:
+- `pnpm dev` - Start development server
+- `pnpm build` - Build for production
+- `pnpm start` - Start production server
+- `pnpm lint` - Run ESLint
+- `pnpm db:start` - Start PostgreSQL container
+- `pnpm db:stop` - Stop PostgreSQL container
+- `pnpm db:reset` - Reset database and start fresh
+- `pnpm db:logs` - View PostgreSQL logs
+
+## Authentication
+
+The project uses NextAuth 5.0 for authentication. Configure your auth providers in `packages/web/app/api/auth/[...nextauth]/route.ts`.
+
+### Environment Variables
+
+Required environment variables in `.env.local`:
+
+```env
+# Database
+DATABASE_URL=postgres://tg_docs_user:tg_docs_password@localhost:5432/tg_docs_db
+
+# NextAuth
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-key-here
+
+# Add your OAuth providers here
+# GITHUB_CLIENT_ID=
+# GITHUB_CLIENT_SECRET=
 ```
 
 ## Contributing
@@ -108,7 +177,7 @@ pnpm start
 
 ## License
 
-[Your License Here]
+MIT
 
 ## Team
 

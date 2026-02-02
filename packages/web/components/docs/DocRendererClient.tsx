@@ -24,8 +24,9 @@ const DocRenderer = dynamic(() => import("./DocRenderer"), {
 interface Props {
   doc: DocContent;
   slug: string;
+  projectSlug?: string;
 }
 
-export default function DocRendererClient({ doc, slug }: Props) {
-  return <DocRenderer doc={doc} slug={slug} />;
+export default function DocRendererClient({ doc, slug, projectSlug }: Props) {
+  return <DocRenderer doc={doc} slug={slug} projectSlug={projectSlug} />;
 }

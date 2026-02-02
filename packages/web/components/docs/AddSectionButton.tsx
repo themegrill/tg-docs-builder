@@ -46,14 +46,11 @@ export default function AddSectionButton({
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `/api/projects/${projectSlug}/sections`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, slug, createDescription }),
-        }
-      );
+      const response = await fetch(`/api/projects/${projectSlug}/sections`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, slug, createDescription }),
+      });
 
       const data = await response.json();
 
@@ -66,8 +63,8 @@ export default function AddSectionButton({
       setSlug("");
       setCreateDescription(true);
       router.refresh();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create section");
     } finally {
       setLoading(false);
     }
@@ -120,7 +117,10 @@ export default function AddSectionButton({
               onChange={(e) => setCreateDescription(e.target.checked)}
               className="h-4 w-4 rounded border-gray-300"
             />
-            <Label htmlFor="createDescription" className="text-sm font-normal cursor-pointer">
+            <Label
+              htmlFor="createDescription"
+              className="text-sm font-normal cursor-pointer"
+            >
               Create section overview page
             </Label>
           </div>
