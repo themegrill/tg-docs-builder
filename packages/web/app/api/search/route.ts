@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db/postgres";
 import { getProjectFromRequest } from "@/lib/project-helpers";
 
+interface SearchResult {
+  id: string;
+  title: string;
+  slug: string;
+  description?: string;
+  section?: string;
+  isSection?: boolean;
+}
+
+interface NavRoute {
+  title: string;
+  path: string;
+  children?: NavRoute[];
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -26,9 +41,10 @@ export async function GET(request: NextRequest) {
 
     // Search in database
     const sql = getDb();
-    const searchTerm = `%${query.trim()}%`;
+    const searchTerm = `%${query.trim().toLowerCase()}%`;
 
-    const results = await sql`
+    // Search documents
+    const documentResults = await sql`
       SELECT
         d.id,
         d.title,
@@ -53,8 +69,38 @@ export async function GET(request: NextRequest) {
       LIMIT 20
     `;
 
-    // Format results
-    const formattedResults = results.map((doc) => {
+    // Get navigation structure to search sections
+    const navigation = await sql`
+      SELECT structure
+      FROM navigation
+      WHERE project_id = ${project.id}
+      LIMIT 1
+    `;
+
+    const sectionResults: SearchResult[] = [];
+
+    if (navigation.length > 0 && navigation[0].structure?.routes) {
+      const routes: NavRoute[] = navigation[0].structure.routes;
+      const lowerQuery = query.trim().toLowerCase();
+
+      // Search through sections (parent routes)
+      routes.forEach((route) => {
+        if (route.title?.toLowerCase().includes(lowerQuery)) {
+          // Extract section slug from path
+          const sectionSlug = route.path.replace(/^\/docs\//, '');
+          sectionResults.push({
+            id: `section-${route.path}`,
+            title: route.title,
+            slug: sectionSlug,
+            description: `Section • ${route.children?.length || 0} documents`,
+            isSection: true,
+          });
+        }
+      });
+    }
+
+    // Format document results
+    const formattedDocResults = documentResults.map((doc) => {
       // Extract section from slug (e.g., "getting-started/intro" -> "Getting Started")
       const slugParts = doc.slug.split("/");
       const section = slugParts.length > 1
@@ -72,6 +118,9 @@ export async function GET(request: NextRequest) {
         section,
       };
     });
+
+    // Combine results - sections first, then documents
+    const formattedResults = [...sectionResults, ...formattedDocResults];
 
     return NextResponse.json({ results: formattedResults });
   } catch (error: unknown) {

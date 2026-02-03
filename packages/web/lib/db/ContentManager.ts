@@ -42,6 +42,7 @@ export interface NavRoute {
   title: string;
   path: string;
   children?: NavRoute[];
+  orderIndex?: number;
 }
 
 export class ContentManager {

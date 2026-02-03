@@ -1,7 +1,7 @@
 "use client";
 
 import { Navigation } from "@/lib/db/ContentManager";
-import Sidebar from "@/components/docs/Sidebar";
+import SidebarWithDnd from "@/components/docs/SidebarWithDnd";
 import UserMenu from "@/components/auth/UserMenu";
 import TableOfContents from "@/components/docs/TableOfContents";
 import SearchDialog from "@/components/docs/SearchDialog";
@@ -111,7 +111,7 @@ export default function DocsLayoutClient({
               <X size={20} />
             </button>
           </div>
-          <Sidebar
+          <SidebarWithDnd
             navigation={navigation}
             isAuthenticated={!!session?.user}
             projectSlug={projectSlug}
