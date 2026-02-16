@@ -17,7 +17,7 @@ export default async function ProjectDocsLayout({
   // Get project from slug
   const sql = getDb();
   const [project] = await sql`
-    SELECT id, name, slug FROM projects WHERE slug = ${projectSlug}
+    SELECT id, name, slug, metadata FROM projects WHERE slug = ${projectSlug}
   `;
 
   if (!project) {
@@ -51,7 +51,11 @@ export default async function ProjectDocsLayout({
   const navigation = await cm.getNavigation(project.id);
 
   return (
-    <DocsLayoutClient navigation={navigation} userProjectRole={userRole}>
+    <DocsLayoutClient
+      navigation={navigation}
+      userProjectRole={userRole}
+      projectMetadata={project.metadata || {}}
+    >
       {children}
     </DocsLayoutClient>
   );

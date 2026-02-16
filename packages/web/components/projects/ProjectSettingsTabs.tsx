@@ -10,6 +10,7 @@ interface ProjectSettingsTabsProps {
   projectSlug: string;
   projectId: string;
   projectName: string;
+  projectMetadata: Record<string, any>;
   currentUserRole: string;
   isSuperAdmin: boolean;
 }
@@ -20,6 +21,7 @@ export function ProjectSettingsTabs({
   projectSlug,
   projectId,
   projectName,
+  projectMetadata,
   currentUserRole,
   isSuperAdmin,
 }: ProjectSettingsTabsProps) {
@@ -87,6 +89,7 @@ export function ProjectSettingsTabs({
               projectSlug={projectSlug}
               projectId={projectId}
               projectName={projectName}
+              projectMetadata={projectMetadata}
               isSuperAdmin={isSuperAdmin}
             />
           </div>

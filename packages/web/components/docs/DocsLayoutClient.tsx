@@ -25,6 +25,7 @@ interface DocsLayoutClientProps {
   children: React.ReactNode;
   navigation: Navigation;
   userProjectRole?: string | null;
+  projectMetadata?: Record<string, any>;
 }
 
 function EditControls() {
@@ -106,6 +107,7 @@ function DocsLayoutContent({
   children,
   navigation,
   userProjectRole,
+  projectMetadata = {},
 }: DocsLayoutClientProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { data: session } = useSession();
@@ -147,10 +149,11 @@ function DocsLayoutContent({
             </button>
 
             <Image
-              src="https://themegrill.com/wp-content/uploads/2021/08/tg-logo-black.png"
+              src={projectMetadata?.logo || "https://themegrill.com/wp-content/uploads/2021/08/tg-logo-black.png"}
               alt="Logo"
               width={150}
-              height={20}
+              height={40}
+              className="object-contain max-h-10"
             />
             <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
               v{navigation.version}
@@ -232,12 +235,14 @@ export default function DocsLayoutClient({
   children,
   navigation,
   userProjectRole,
+  projectMetadata,
 }: DocsLayoutClientProps) {
   return (
     <EditingProvider>
       <DocsLayoutContent
         navigation={navigation}
         userProjectRole={userProjectRole}
+        projectMetadata={projectMetadata}
       >
         {children}
       </DocsLayoutContent>

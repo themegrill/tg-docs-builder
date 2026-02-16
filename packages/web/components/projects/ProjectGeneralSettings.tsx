@@ -16,13 +16,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Trash2, Save, Loader2 } from "lucide-react";
+import { Trash2, Save, Loader2, Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import Image from "next/image";
 
 interface ProjectGeneralSettingsProps {
   projectSlug: string;
   projectId: string;
   projectName: string;
+  projectMetadata: Record<string, any>;
   isSuperAdmin: boolean;
 }
 
@@ -30,6 +32,7 @@ export function ProjectGeneralSettings({
   projectSlug,
   projectId,
   projectName,
+  projectMetadata,
   isSuperAdmin,
 }: ProjectGeneralSettingsProps) {
   const router = useRouter();
@@ -37,11 +40,14 @@ export function ProjectGeneralSettings({
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   const [formData, setFormData] = useState({
     name: projectName,
     slug: projectSlug,
   });
+
+  const [metadata, setMetadata] = useState(projectMetadata);
 
   const handleSave = async () => {
     if (!formData.name.trim() || !formData.slug.trim()) {
@@ -59,7 +65,7 @@ export function ProjectGeneralSettings({
       const response = await fetch(`/api/projects/${projectSlug}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, metadata }),
       });
 
       if (!response.ok) {
@@ -124,6 +130,120 @@ export function ProjectGeneralSettings({
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Error",
+        description: "Please upload an image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "Image must be less than 2MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingLogo(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to upload logo");
+      }
+
+      const { url } = await response.json();
+      const updatedMetadata = { ...metadata, logo: url };
+      setMetadata(updatedMetadata);
+
+      // Auto-save the metadata to database
+      const saveResponse = await fetch(`/api/projects/${projectSlug}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: projectName, // Use props instead of state
+          slug: projectSlug,
+          metadata: updatedMetadata,
+        }),
+      });
+
+      if (!saveResponse.ok) {
+        const errorData = await saveResponse.json();
+        console.error("Save error:", errorData);
+        throw new Error(errorData.error || "Failed to save logo");
+      }
+
+      toast({
+        title: "Success",
+        description: "Logo uploaded and saved successfully",
+      });
+
+      router.refresh(); // Refresh to show updated logo
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload logo",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    try {
+      const updatedMetadata = { ...metadata, logo: "" };
+      setMetadata(updatedMetadata);
+
+      // Auto-save the metadata to database
+      const response = await fetch(`/api/projects/${projectSlug}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: projectName, // Use props instead of state
+          slug: projectSlug,
+          metadata: updatedMetadata,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Remove error:", errorData);
+        throw new Error(errorData.error || "Failed to remove logo");
+      }
+
+      toast({
+        title: "Success",
+        description: "Logo removed successfully",
+      });
+
+      router.refresh(); // Refresh to show updated state
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to remove logo",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -199,12 +319,93 @@ export function ProjectGeneralSettings({
                 variant="outline"
                 onClick={() => {
                   setIsEditing(false);
-                  setFormData({ name: projectName, slug: projectSlug });
+                  setFormData({
+                    name: projectName,
+                    slug: projectSlug,
+                  });
+                  setMetadata(projectMetadata);
                 }}
                 disabled={isSaving}
               >
                 Cancel
               </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Project Logo */}
+      <div className="bg-white border rounded-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold">Project Logo</h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Upload a logo to display for this project (recommended: 150x40px)
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {metadata.logo && (
+            <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-md">
+              <div className="relative h-10 w-40 flex items-center justify-center bg-white border rounded">
+                <Image
+                  src={metadata.logo}
+                  alt="Project logo"
+                  width={150}
+                  height={40}
+                  className="object-contain max-h-10"
+                />
+              </div>
+              {isSuperAdmin && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRemoveLogo}
+                  disabled={isUploadingLogo}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Remove
+                </Button>
+              )}
+            </div>
+          )}
+
+          {isSuperAdmin && (
+            <div>
+              <Label htmlFor="logo" className="sr-only">
+                Upload Logo
+              </Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isUploadingLogo}
+                  onClick={() => document.getElementById("logo-upload")?.click()}
+                >
+                  {isUploadingLogo ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      {metadata.logo ? "Change Logo" : "Upload Logo"}
+                    </>
+                  )}
+                </Button>
+                <input
+                  id="logo-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                PNG, JPG, or SVG. Max 2MB. Recommended size: 150x40px
+              </p>
             </div>
           )}
         </div>
