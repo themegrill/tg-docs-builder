@@ -169,16 +169,16 @@ export default async function SectionPage({
             <Link
               key={doc.id}
               href={`/projects/${projectSlug}/docs/${doc.slug}`}
+              className="h-full"
             >
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                <CardHeader>
-                  <CardTitle className="flex items-start gap-2">
-                    <FileText className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                    <span className="leading-snug">{doc.title}</span>
+              <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer flex flex-col">
+                <CardHeader className="flex-1">
+                  <CardTitle className="line-clamp-2 leading-snug">
+                    {doc.title}
                   </CardTitle>
-                  {doc.description && (
-                    <CardDescription className="mt-2">{doc.description}</CardDescription>
-                  )}
+                  <CardDescription className="mt-2 line-clamp-2 min-h-[2.5rem]">
+                    {doc.description || "No description available"}
+                  </CardDescription>
                 </CardHeader>
               </Card>
             </Link>
